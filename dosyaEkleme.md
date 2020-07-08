@@ -91,11 +91,13 @@ INSERT INTO `oc_filecache_extended` VALUES ...;
 # Dosya Geri Yükleme(Çöp kutusundan geri yükleme)
 Senaryomuz şu şekilde, "pire.txt" adında bir dosyayı sisteme yükledik, sonrasında bu dosyayı sildik ve çöp kutusuna taşınmış oldu. Şimdi dosyayı geri yükle dediğimizde gerçekleşen işemleri inceliyoruz.
 "oc_filecache" tablomuzda çok büyük bir değişiklik yoktur fakat dosyamız çöp kutusunda iken veri tabanında uzantısı değişmektedir. Dosyamız geri yüklendiğimizde  tablomuzda "parent", "name", "mimetype" ve "mimepart" parametrelerinde değişiklikler gözlemleriz.  Uzantısının nasıl değiştiğini sorguda görmek için "Dosya Silme(İlk silme işlemi)" başlığı altından inceleyebilirsiniz. Burada değişiklikten kast ettiğimiz durum örneğin "pire.txt" dosyası çöp kutusuna taşınmış olduğu durumda veri tabanında adı ve uzantısı "pire.txt.d1594212848"  şekilde değiştiği için haliyle uzantıyı, adını vb. gösteren parametreler de bu değişime bağlı olarak etkilenmektedir.
+
 Geri alma işleminden **önce**(dosyamız çöp kutusunda iken);
 ```sql
 INSERT INTO `oc_files_trash` VALUES ..., (4,'pire.txt','hardrez','1594212848','.',NULL,NULL);
 ```
 şeklinde **"oc_files_trash"** tablosunda yer almaktaydı. Fakat dosyamızı geri yükleme işleminden sonra, dosyamız artık bu tabloda yer almaz.
+
 Geri alma işleminden **sonra**;
 ```sql
 INSERT INTO `oc_files_trash` VALUES ...;
