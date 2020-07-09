@@ -152,3 +152,19 @@ Göründüğü üzere kategorilere hala 1 adet dosya insert ediliyor. Fakat "obj
 INSERT INTO `oc_vcategory_to_object` VALUES (14,1,'files'),(327,1,'files');
 ```
 **Önemli NOT:** "14" objid'ye sahip dosyamız şuan için anlatımla alakası yoktur, o id'ye sahip dosya çalışmalar dışında farklı testler için favorilere eklenmiştir ve önceki "Dosyayı Favorilere Ekleme" konusunda yer almamaktadır.
+
+
+# Dosyayı Yeniden Adlandırma
+Önceki senaryolarda sisteme yüklemiş olduğumuz "327" objid'li "pire.txt" dosyası üzerinden gitmeye devam ediyoruz. "pire.txt" adlı dosyamızın adını "degistirilmisPire.txt" şekilnde yeniden adlandırarak veri tabanında gerçekleşen sorguları inceleyecez. Burda bir işlem söz konusu olduğundan yine "oc_activity" tablomuz enbaşta olmak üzere, beraberinde "oc_filecache" tablosu da dolaylı olarak etkilenmektedir. İlk sorgumuzu inceleyelim.
+```sql
+INSERT INTO `oc_activity` VALUES ..., (79,1594298461,30,'file_changed','hardrez','hardrez','files','renamed_self','[{\"327\":\"\\/\\/degistirilmisPire.txt\"},{\"327\":\"\\/\\/pire.txt\"}]','','[]','//degistirilmisPire.txt','http://192.168.1.2/nextcloud/index.php/apps/files/?dir=/','files',327);
+```
+Bir dosyanın ismini değiştirme isteğini yolladığımızda sistem tarafında, "file_changed" parametresinde yapılması gereken düzenleme tipi tabloya uygun bilgilerle doldurulmuş ve sorgu basılmıştır. Burda basılan sorguda "327" objid'ye sahip olan dosyanın isminin yeniden adlandırılma aksiyonunun sisteme eklendiğini gözlemliyoruz. Parametrelerin detayları için "Dosya Ekleme" konusuna gidebilirsiniz. Sorgumuzda dosyanın eski ve yeni adını da gözlemliyebiliyoruz.
+```sql
+INSERT INTO `oc_filecache` VALUES ..., (327,2,'files/degistirilmisPire.txt','f14efdbe76ec33b8514b08e93338252c',6,'degistirilmisPire.txt',20,6,105,1594212819,1594212819,0,0,'966aac7b9f57ad17177dd0624a33e5d8',27,''), ...;
+```
+Mysql dump dosyalarımızı karşılaştırdığımızda buradaki tek değişen farkın dosya adı olduğunu gözlemliyoruz. Burada dikkat çeken bir husus bulunmaktadır, biz dosyamızın adını değiştirsek de "mtime" ve "storage_mtime" parametrelerinin önceki ve sonraki durumlarda **değişmediğini** gözlemliyoruz. Sistem eğer dosyanın içeriğinde herhangi bir değişiklik olursa bu zaman damgalarını güncellemektedir. Dosyanın adındaki değişiklikler bu parametreleri **etkilememektedir**. İsim değiştirmeden **önceki** sorguya da aşağıdan bakarak inceleyebilirsiniz.
+```sql
+INSERT INTO `oc_filecache` VALUES ..., (327,2,'files/pire.txt','40d5b374e7892f0775f505d91845a0e4',6,'pire.txt',20,6,105,1594212819,1594212819,0,0,'966aac7b9f57ad17177dd0624a33e5d8',27,''), ...;
+```
+Söylediklerimize ek olarak "path_hash" parametresinin de değiştiğini görüyoruz, değişmesinin sebebi dosya yolunda dosyanın da adı yer aldığı için dosya adındaki veya dosya yolundaki değişiklikler haliyle "path_hash" parametresini de etkilemektedir.
