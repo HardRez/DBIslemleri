@@ -104,3 +104,51 @@ Geri alma işleminden **sonra**;
 INSERT INTO `oc_files_trash` VALUES ...;
 ```
 (...) diğer dosyaları kapsamaktadır. Sorgumuzun son halinin bu şekilde değiştiğini görürüz.
+
+
+# Dosyayı Favorilere Kaydetme
+Senaryomuzda yine öncesinde yüklemiş olduğumuz "pire.txt" adında bir dosyamız var. Bu dosyayı favorilere aldığımızda veri tabanında yapılan işlemleri inceleyeceğiz. İşlemi yapmadan ve yaptıktan sonra mysql'in dump dosyalarını karşılaştırıyoruz.
+Bu yaptığımız işlemde sonuçta bir **activity** olduğu "oc_activity" tablosuna yeni bir girdimiz ekleniyor.
+```sql
+INSERT INTO `oc_activity` VALUES ..., (68,1594270741,30,'favorite','hardrez','hardrez','files','added_favorite','{\"id\":327,\"path\":\"pire.txt\"}','','[]','pire.txt','','files',327);
+```
+"oc_activity" tablosunda yer alan parametrelerden yazımızın en başında bahsedilmişti. Ordan bakılabilir. Sorgumuzdan da basitçe baktığımızde bir "pire.txt" dosyamız  ve subject parametremiz 'added_favorite'  şeklinde. Burda **type** parametremizin 'favorite' olduğunu da görüyoruz. Yani biz bir dosyayı favorilere eklediğimizde "oc_activity" tablosunda bu eklemeler gerçekleşiyor.
+
+```sql
+INSERT INTO `oc_vcategory` VALUES (1,'hardrez','files','_$!<Favorite>!$_');
+```
+Bir dosyayı favorilere eklediğimizde aslında basitçe düşünürsek bir kategorize etme işlemi gerçekleştiriyoruz. "oc_vcategory" tablomuzun parametlerini inclediğimizde parametreler şu şekildedir;
+1) id
+2) uid(kullanıcı id / user id)
+3) type (türü bknz. file, picture...)
+4) category
+
+Sorgumuzu incelicek olursak biz sistemdeki bir dosyayı favori olarak kaydettiğimizde "oc_vcategory" tablosunda otomatik olarak "1" id'ye sahip(auto increment), "hardrez" adlı kullanıcı tarafından oluşturulmuş, "files" dosya tiplerini içeren, "_$!<Favorite>!$_" kategorisini oluşturuyor. Aslında ilk başta böyle bir kategori yok, ne zaman biz bir dosyayı favorilere kaydettik, o zaman sistemde otomatik olarak bu sorgu ile favoriler adında bir kategori oluşuyor ve eklediğimiz dosya türüne bağlı olarak  hangi tipde içerik tuttuğunu gösteriyor.
+
+
+```sql
+INSERT INTO `oc_vcategory_to_object` VALUES (327,1,'files');
+```
+Yine baktığımızda yukarıdaki sorgumuza benzediğini söyleyebiliriz. Öncesinde tablomuza parametrelerimizi inceleyliyoruz.
+1) objid(nesnemizin/dosyamızın id'si)
+2) categoryid(kategori id)
+3) type(tipi)
+
+Değişkenlerden de gördüğümüz üzere "327" bizim dosyamızın id'sini belirtiyor. Yani hangi bu "objid"'ye sahip nesne bizim dosyamız. "categoryid" değerimiz "1" idi, "oc_vcategory" tablosunu incelediğimizde bu id'ye karşılık gelen kategorinin **"_$!<Favorite>!$_"** olduğunu gözlemliyoruz. "type" değişkeninde parametre olarak "files" girilmiş. Yani sistemdeki bu nesnenin "files" tipinden olduğunu gösteriyor. Sonuç olarak sorguyu Türkçeleştiricek olursak, "327" objidye sahip,  "1" kategori id'li, "files" tipindeki nesne tabloya ekleniyor demek istenmektedir.
+
+
+# Dosyayı Favorilerden Kaldırma
+Favorilere kaydetmede "pire.txt" adlı bir dosyamızı favori olarak kaydetmiştik. Şimdi ise favorilerden kaldırıp yine WinMerge programımız ile gerçekleşen sorguları inceliyicez. Sitede yaptığımız hemen hemen her işlem bir aktivite olarak geçtiği için "oc_activity" ve onun dışında "oc_vcategory_to_object" tablolarımızda değişiklikler olmaktadır. Favori eklemede "oc_vcategory" tablomuz da etkilenmişti, çünkü hiç favori eklenmediği, başlangıç durumunda(herhangi bir kategori yok iken) "oc_vcategory" tablosunun boş olduğunu gözlemledik. Ne zaman ki biz sistemde bir kategorize etme işlemi uyguladık, yani bir dosyayı favorilere ekledik o zaman "oc_vcategory" tablosuna **"_$!<Favorite>!$_"** kategori adında bir instert işlemi gerçekleşti. Yani aslında bizim en başta sistemde **"_$!<Favorite>!$_"** adında bir kategorimiz yoktu. İşlemin detayları için "Dosyayı Favorilere Ekleme"'de yer almaktadır.
+Şimdi bir dosyayı favorilerden kaldırdığımızdaki ve kaldırmadan önceki farkı inceleyebiliriz.
+```sql
+INSERT INTO `oc_activity` VALUES ..., (71,1594293477,30,'favorite','hardrez','hardrez','files','removed_favorite','{\"id\":327,\"path\":\"pire.txt\"}','','[]','pire.txt','','files',327);
+```
+Dediğimiz üzere favorilerden kaldırma işlemi de bir aksiyon olduğu için burada veritabanına "hardrez" adlı kullanıcı tarafından gerçekleşen "files" tipindeki, "327" objid'ye sahip, "pire.txt" dosyasının, "removed_favorite" başlığı altında yapılması gereken işlem insert edilmiştir. Ve arkaplanda sistem tarafından favorilerden kaldırılması için gerekli sorgu basılmaktadır. Bu tabloya ait parametreleri incelemek için ilk konuya çıkabilirsiniz.
+```sql
+INSERT INTO `oc_vcategory_to_object` VALUES (14,1,'files');
+```
+Göründüğü üzere kategorilere hala 1 adet dosya insert ediliyor. Fakat "objid"'sine bakıcak olursak bu dosyanın bizim "pire.txt" dosyası olmadığını görebiliriz. Çünkü "pire.txt" dosyasını sisteme eklediğimizde "objid" parametresinin "327" olduğunu gözlemlemiştik. Yani bir dosyayı favorilerden kaldırdığımızda  artık kategorilere ait dosyaların yer aldığı "oc_vcategory_to_object" tablosunda "pire.txt" dosyamızın bilgilerinin yer almadığını görebiliriz. Farkı daha iyi gözlemlemek adına aşağıya tekrar, dosyamızın favorilere eklendiği andaki sorguyu yazıyorum.
+```sql
+INSERT INTO `oc_vcategory_to_object` VALUES (14,1,'files'),(327,1,'files');
+```
+**Önemli NOT:** "14" objid'ye sahip dosyamız şuan için anlatımla alakası yoktur, o id'ye sahip dosya çalışmalar dışında farklı testler için favorilere eklenmiştir ve önceki "Dosyayı Favorilere Ekleme" konusunda yer almamaktadır.
